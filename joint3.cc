@@ -3,6 +3,12 @@
 #include<vector>
 using namespace std;
 
+#define DRAKE_IMPORT_IMPLEMENTATION(Class, Method, T, ReturnT) \
+  ReturnT Method(Context<T>& ctx) override {			  \
+    cout << __PRETTY_FUNCTION__ << endl;                          \
+    return Class##Implementation<T>::GetTransform(ctx);    \
+  }
+
 template<class T>
 class Context {
 public:  
@@ -16,10 +22,7 @@ public:
 };
 
 #define JOINT_IMPORT_IMPLEMENTATIONS(DerivedJoint, T)             \
-  T GetTransform(Context<T>& ctx) override {                      \
-    cout << __PRETTY_FUNCTION__ << endl;                          \
-    return DerivedJoint##Implementation<T>::GetTransform(ctx);    \
-  }
+  DRAKE_IMPORT_IMPLEMENTATION(DerivedJoint, GetTransform, T, T);
 
 // Interface for multiple types
 class Joint: public JointInterface<int>, JointInterface<double> {
@@ -44,6 +47,10 @@ public:
   }
 };
 
+#define REVOLUTE_JOINT_IMPORT_IMPLEMENTATIONS()        \
+  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, int);    \
+  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, double);
+
 // Implementation for multiple types
 class RevoluteJoint: public Joint, RevoluteJointImplementation<int>, RevoluteJointImplementation<double> {
 public:
@@ -55,10 +62,8 @@ public:
     cout << __PRETTY_FUNCTION__ << endl;
   }
 
-  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, int);
-  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, double);
+  REVOLUTE_JOINT_IMPORT_IMPLEMENTATIONS();
 };
-
 
 
 int main()
@@ -73,6 +78,6 @@ int main()
 
   j->GetTransform(cd);
   j->GetTransform(ci);
-  
+
   return 0;
 }
