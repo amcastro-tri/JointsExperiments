@@ -3,16 +3,17 @@
 #include<vector>
 using namespace std;
 
-#define DRAKE_IMPORT_IMPLEMENTATION(Class, Method, T, ReturnT) \
-  ReturnT Method(Context<T>& ctx) override {			  \
-    cout << __PRETTY_FUNCTION__ << endl;                          \
-    return Class##Implementation<T>::GetTransform(ctx);    \
-  }
-
 template<class T>
 class Context {
 public:  
 };
+
+#define JOINT_BASE_INTERFACE(Method, T, ReturnT)	\
+  virtual ReturnT GetTransform(Context<T>& ctx) = 0;
+
+#define JOINT_BASE_INTERFACES()	                        \
+  JOINT_BASE_INTERFACE(GetTransform, int, int);		\
+  JOINT_BASE_INTERFACE(GetTransform, double, double);
 
 // Interface for a single type
 template<typename T>
@@ -21,40 +22,50 @@ public:
   virtual T GetTransform(Context<T>& ctx) = 0;
 };
 
-#define JOINT_IMPORT_IMPLEMENTATIONS(DerivedJoint, T)             \
-  DRAKE_IMPORT_IMPLEMENTATION(DerivedJoint, GetTransform, T, T);
-
 // Interface for multiple types
-class Joint: public JointInterface<int>, JointInterface<double> {
+class Joint /*: public JointInterface<int>, JointInterface<double> {*/ { //Multiple inheritanc cause compiler error with CRTP
 public:
-  virtual ~Joint() {}
+  Joint() {
+    cout << __PRETTY_FUNCTION__ << endl;
+  }
+  virtual ~Joint() {
+    cout << __PRETTY_FUNCTION__ << endl;
+  }
+
+  JOINT_BASE_INTERFACES();
 };
 
-// Implementation for a single type
-template<typename T>
-class RevoluteJointImplementation: public JointInterface<T> {
-public:
-  RevoluteJointImplementation() {
-    cout << __PRETTY_FUNCTION__ << endl;
+#define JOINT_BASE_IMPLEMENTATION(Method, T, ReturnT)	\
+  ReturnT GetTransform(Context<T>& ctx) override {	\
+    cout << __PRETTY_FUNCTION__ << endl;                \
+    return derived_->GetTransform(ctx);                 \
   }
-  ~RevoluteJointImplementation() {
-    cout << __PRETTY_FUNCTION__ << endl;
-  }
-  
-  T GetTransform(Context<T>& ctx) override {
-    cout << __PRETTY_FUNCTION__ << endl;
-    return T();
-  }
-};
 
-#define REVOLUTE_JOINT_IMPORT_IMPLEMENTATIONS()        \
-  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, int);    \
-  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, double);
+#define JOINT_BASE_IMPLEMENTATIONS()                        \
+  JOINT_BASE_IMPLEMENTATION(GetTransform, double, double);  \
+  JOINT_BASE_IMPLEMENTATION(GetTransform, int, int);        
+
+// CRTP (Curiously recurring template pattern) base joint class
+template<class Derived>
+class JointBase: public Joint {
+public:
+  JointBase(Derived* derived): derived_(derived) {
+    cout << __PRETTY_FUNCTION__ << endl;
+  }
+
+  virtual ~JointBase() {
+    cout << __PRETTY_FUNCTION__ << endl;
+  }
+
+  JOINT_BASE_IMPLEMENTATIONS();
+private:
+  Derived* derived_;
+};
 
 // Implementation for multiple types
-class RevoluteJoint: public Joint, RevoluteJointImplementation<int>, RevoluteJointImplementation<double> {
+class RevoluteJoint: public JointBase<RevoluteJoint> {
 public:
-  RevoluteJoint() {
+  RevoluteJoint(): JointBase(this) {
     cout << __PRETTY_FUNCTION__ << endl;
   }
 
@@ -62,22 +73,32 @@ public:
     cout << __PRETTY_FUNCTION__ << endl;
   }
 
-  REVOLUTE_JOINT_IMPORT_IMPLEMENTATIONS();
+  template<typename T>
+  T GetTransform(Context<T>& ctx) {
+    cout << __PRETTY_FUNCTION__ << endl;
+    return T();
+  }
 };
-
 
 int main()
 {
-  RevoluteJoint* j = new RevoluteJoint();
+  Joint* j = new RevoluteJoint();  
 
   std::vector<std::unique_ptr<Joint>> joints_owner;
+
   joints_owner.push_back(std::unique_ptr<Joint>(j));
 
   Context<double> cd;
   Context<int> ci;
 
-  j->GetTransform(cd);
-  j->GetTransform(ci);
+  for(std::unique_ptr<Joint>& j: joints_owner) {
+    std::cout << std::endl;
+    j->GetTransform(cd);
+    std::cout << std::endl;
+    j->GetTransform(ci);
+  }
+
+  std::cout << std::endl;
 
   return 0;
 }
