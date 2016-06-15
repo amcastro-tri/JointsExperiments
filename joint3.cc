@@ -63,6 +63,16 @@ public:
   }
 
   REVOLUTE_JOINT_IMPORT_IMPLEMENTATIONS();
+
+  /* This is what the macro above expands to:
+  double GetTransform(Context<double>& ctx) override {
+    RevoluteJointImplementation<double>::GetTransform(c);
+  }
+
+  int GetTransform(Context<int>& ctx) override {
+    RevoluteJointImplementation<int>::GetTransform(c);
+  }
+  */
 };
 
 
