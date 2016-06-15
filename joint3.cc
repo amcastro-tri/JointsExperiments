@@ -15,6 +15,12 @@ public:
   virtual T GetTransform(Context<T>& ctx) = 0;
 };
 
+#define JOINT_IMPORT_IMPLEMENTATIONS(DerivedJoint, T)             \
+  T GetTransform(Context<T>& ctx) override {                      \
+    cout << __PRETTY_FUNCTION__ << endl;                          \
+    return DerivedJoint##Implementation<T>::GetTransform(ctx);    \
+  }
+
 // Interface for multiple types
 class Joint: public JointInterface<int>, JointInterface<double> {
 public:
@@ -39,30 +45,18 @@ public:
 };
 
 // Implementation for multiple types
-class RevoluteJoint: public Joint {
+class RevoluteJoint: public Joint, RevoluteJointImplementation<int>, RevoluteJointImplementation<double> {
 public:
   RevoluteJoint() {
     cout << __PRETTY_FUNCTION__ << endl;
-    pimpl_int_.reset(new  RevoluteJointImplementation<int>());
-    pimpl_double_.reset(new  RevoluteJointImplementation<double>());
   }
 
   ~RevoluteJoint() {
     cout << __PRETTY_FUNCTION__ << endl;
   }
 
-  int GetTransform(Context<int>& ctx) {
-    cout << __PRETTY_FUNCTION__ << endl;
-    return pimpl_int_->GetTransform(ctx);
-  }
-  double GetTransform(Context<double>& ctx) {
-    cout << __PRETTY_FUNCTION__ << endl;
-    return pimpl_double_->GetTransform(ctx);
-  }
-
-private:
-  std::unique_ptr<RevoluteJointImplementation<int>> pimpl_int_;
-  std::unique_ptr<RevoluteJointImplementation<double>> pimpl_double_;
+  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, int);
+  JOINT_IMPORT_IMPLEMENTATIONS(RevoluteJoint, double);
 };
 
 
